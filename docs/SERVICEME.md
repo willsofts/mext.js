@@ -1,7 +1,3 @@
----
-layout: default
-title: My Page
----
 # How to provide data service from database in template
 
 This is how to discover data from table in relational database.

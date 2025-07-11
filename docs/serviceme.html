@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>SERVICEME</title>
+	<style>
+		/* Basic styles for readability */
+		body {
+			font-family: sans-serif;
+			max-width: 800px;
+			margin: 2em auto;
+			padding: 0 1em;
+			line-height: 1.6;
+		}
+		img { max-width: 100%; height: auto; }
+		pre { background-color: #f4f4f4; padding: 1em; overflow-x: auto; }
+		code { font-family: monospace; }
+	</style>
+</head>
+<body>
+	<h1>How to provide data service from database in template</h1>
+<p>This is how to discover data from table in relational database.</p>
+<h2>How to load services</h2>
+<p>In template all services file must have suffix name with <code>.service.js</code> and dynamic load from folders under project with the following.</p>
+<ul>
+<li>services  - this folder reserved for core services</li>
+<li>workers   - this fodler reserved for internal services</li>
+<li>operators  - this folder reserved for additional services</li>
+</ul>
+<h2>How to set database connection</h2>
+<p>Database configuration can setting to access by <code>/config/default.json</code>. see more detail <a href="https://github.com/willsofts/will-sql">will-sql</a>. By default, template using tag <code>DB_SECTION</code> point to config. ex.</p>
+<pre><code class="language-json">    &quot;DB_SECTION&quot;: &quot;MYSQL&quot;,
+    &quot;MYSQL&quot; : { &quot;alias&quot;: &quot;mysql2&quot;, &quot;dialect&quot;: &quot;mysql&quot;, &quot;url&quot;:&quot;&quot;, &quot;user&quot;: &quot;root&quot;, &quot;password&quot;: &quot;U2FsdGVkX1/g09PLPXpBXTOvaP4gjCYAFWF/XOS711w=&quot;, &quot;password_ENCRYPTED&quot;: &quot;true&quot;, &quot;host&quot;: &quot;localhost&quot;, &quot;port&quot;: 3306, &quot;database&quot;: &quot;assuredb&quot;, &quot;options&quot;: { &quot;charset&quot;: &quot;utf8&quot;, &quot;connectionLimit&quot;: 100 } },
+</code></pre>
+<h2>How to provide service</h2>
+<h3>Create your own service</h3>
+<p>Under folder operators this is where your <code>xxx.service.ts</code> file exist.</p>
+<p>This is sample table schema and data.</p>
+<pre><code class="language-shell">CREATE TABLE sample (
+	fieldchar VARCHAR(50) NOT NULL,
+	fielddecimal DECIMAL(22,6) NULL DEFAULT NULL,
+	fielddate DATE NULL DEFAULT NULL,
+	fieldtime TIME NULL DEFAULT NULL,
+	fielddatetime DATETIME NULL DEFAULT NULL,
+	fieldinteger INT(10) NULL DEFAULT NULL,
+	fieldvarchar VARCHAR(15) NULL DEFAULT NULL,
+	fieldflag VARCHAR(1) NULL DEFAULT NULL,
+	fieldtext MEDIUMTEXT NULL DEFAULT NULL,
+	PRIMARY KEY (fieldchar)
+)
+</code></pre>
+<pre><code class="language-shell">INSERT INTO sample (fieldchar, fielddecimal, fielddate, fieldtime, fielddatetime, fieldinteger, fieldvarchar, fieldflag, fieldtext) VALUES
+	('AAA', 26900.000000, '2024-04-30', '12:00:00', '2024-04-30 12:00:00', 8900, 'E', '0', 'Denzel Washington'),
+	('AXT', 1300.000000, '2024-11-01', '10:00:00', '2024-11-01 10:00:00', 1300, 'Q', '1', 'Dustin Hoffman'),
+	('AYB', 1200.000000, '2024-11-01', '10:00:00', '2024-11-01 10:00:00', 1200, 'Q', '1', 'Gene Hackman'),
+	('JCB', 2300.000000, '2024-11-01', '10:00:00', '2024-11-01 10:00:00', 200, 'Q', '1', 'Paul Newman'),
+	('JOI', 12200.000000, '2024-11-01', '10:00:00', '2024-11-01 10:00:00', 100, 'Q', '1', 'Tom Hanks'),
+	('MAK', 98500.958500, '2024-01-05', '15:09:09', '2024-01-05 15:09:09', 8000, 'E', '1', 'Leonardo Dicaprio'),
+	('TME', 45600.250000, '2024-10-16', '14:00:00', '2024-10-16 14:00:00', 8900, 'E', '0', 'Meryl Streep');
+</code></pre>
+<ol>
+<li>
+<p>create simple service</p>
+<p>sample.service.ts.</p>
+</li>
+</ol>
+<pre><code class="language-typescript">import KnService from &quot;@willsofts/will-db&quot;;
+import { ServiceSchema } from &quot;moleculer&quot;;
+import { DB_SECTION } from &quot;../utils/EnvironmentVariable&quot;;
+
+const SampleService : ServiceSchema = {
+    name: &quot;sample&quot;, //specify api name
+    mixins: [KnService], //required base service template
+    model: {
+        name: &quot;sample&quot;, //specify table name
+        alias: { privateAlias: DB_SECTION }, //specify db section
+    },
+    settings: {
+        //do not return column schema
+        disableColumnSchema: true, 
+        //do not paging, if not defined it will make offset query
+        disableQueryPaging: true,
+        //do not return offsets 
+        disablePageOffset: true, 
+    },
+}
+export = SampleService;
+</code></pre>
+<p>After build and run, you can invoke.</p>
+<pre><code>curl -X POST http://localhost:8080/api/sample/list
+curl -X POST http://localhost:8080/api/sample/list?fieldchar=AAA
+</code></pre>
+<ol start="2">
+<li>
+<p>create model service</p>
+<p>sample.model.service.ts</p>
+</li>
+</ol>
+<pre><code class="language-typescript">import KnService from &quot;@willsofts/will-db&quot;;
+import { ServiceSchema } from &quot;moleculer&quot;;
+import { DB_SECTION } from &quot;../utils/EnvironmentVariable&quot;;
+
+const SampleModelService : ServiceSchema = {
+    name: &quot;sample.model&quot;, 
+    mixins: [KnService],
+    model: {
+        name: &quot;sample&quot;,
+        alias: { privateAlias: DB_SECTION }, 
+        fields: {
+            //this field make as key field
+            fieldchar: { type: &quot;STRING&quot;, key: true },
+            fielddecimal: { type: &quot;DECIMAL&quot; },
+            //this field does not update
+            fielddate: { type: &quot;DATE&quot;, updated: false },
+            fieldtime: { type: &quot;TIME&quot;, updated: false },
+            //this field does not in select clause
+            fielddatetime: { type: &quot;DATETIME&quot;, selected: false },
+            fieldinteger: { type: &quot;INTEGER&quot; },
+            fieldvarchar: { type: &quot;STRING&quot;, defaultValue: &quot;E&quot; },
+            fieldflag: { type: &quot;STRING&quot;, defaultValue: &quot;0&quot; },
+            fieldtext: { type: &quot;STRING&quot; },
+            //this field does not exist in table, it is user defined field  
+            remarks: { type: &quot;STRING&quot;, calculated: true }, 
+        },
+        //prefix field name with table name ex. sample.fieldchar,sample.fieldtext
+        prefixNaming: true
+    },
+    settings: {
+        disableColumnSchema: true, 
+    },
+}
+export = SampleModelService;
+</code></pre>
+<p>After build and run, you can invoke.</p>
+<pre><code>curl -X POST http://localhost:8080/api/sample.model/list
+curl -X POST http://localhost:8080/api/sample.model/list?fieldchar=AAA
+</code></pre>
+<ol start="3">
+<li>
+<p>create dynamic query service, user defined action.</p>
+<p>sample.query.service.ts</p>
+</li>
+</ol>
+<pre><code class="language-typescript">import KnService from &quot;@willsofts/will-db&quot;;
+import { KnSQL } from &quot;@willsofts/will-sql&quot;;
+import { ServiceSchema } from &quot;moleculer&quot;;
+import { DB_SECTION } from &quot;../utils/EnvironmentVariable&quot;;
+
+const SampleQueryService : ServiceSchema = {
+    name: &quot;sample.query&quot;, 
+    mixins: [KnService], 
+    model: {
+        name: &quot;sample&quot;, 
+        alias: { privateAlias: DB_SECTION }, 
+    },
+    actions: {
+        async query(ctx: any) {
+            let sql = new KnSQL(&quot;select * from sample &quot;);
+            //check if defined parameter for specified criteria
+            if(ctx.params.fieldchar) {
+                sql.append(&quot;where fieldchar LIKE ?fieldchar &quot;);
+                sql.set(&quot;fieldchar&quot;,&quot;%&quot;+ctx.params.fieldchar+&quot;%&quot;);
+            }
+            let rs = await this.handler.executeQuery(sql);    
+            return rs.rows;
+        },
+    }    
+}
+export = SampleQueryService;
+</code></pre>
+<p>After build and run, you can invoke.</p>
+<pre><code>curl -X POST http://localhost:8080/api/sample.query/query
+curl -X POST http://localhost:8080/api/sample.query/query?fieldchar=AAA
+</code></pre>
+<ol start="4">
+<li>
+<p>create handler service, user defined handler class.</p>
+<p>SampleHandler.ts</p>
+</li>
+</ol>
+<pre><code class="language-typescript">import { KnModel } from &quot;@willsofts/will-db&quot;;
+import { KnSQLInterface } from &quot;@willsofts/will-sql&quot;;
+import { KnContextInfo } from '@willsofts/will-core';
+import { TknOperateHandler } from '@willsofts/will-serv';
+
+export class SampleHandler extends TknOperateHandler {
+    public progid = &quot;sample&quot;;
+    public model : KnModel = { 
+        name: &quot;sample&quot;, 
+        alias: { privateAlias: this.section }, 
+        fields: {
+            fieldchar: { type: &quot;STRING&quot;, key: true },
+            fielddecimal: { type: &quot;DECIMAL&quot; },
+            fielddate: { type: &quot;DATE&quot;, updated: false },
+            fieldtime: { type: &quot;TIME&quot;, updated: false },
+            fielddatetime: { type: &quot;DATETIME&quot;, created: true },
+            fieldinteger: { type: &quot;INTEGER&quot; },
+            fieldvarchar: { type: &quot;STRING&quot;, defaultValue: &quot;E&quot; },
+            fieldflag: { type: &quot;STRING&quot;, defaultValue: &quot;0&quot; },
+            fieldtext: { type: &quot;STRING&quot; },
+        },
+        prefixNaming: true
+    };
+    
+    protected override buildFilterQuery(context: KnContextInfo, model: KnModel, knsql: KnSQLInterface, selector: string, action?: string, subaction?: string): KnSQLInterface {
+        if(this.isCollectMode(action)) {
+            let params = context.params;
+            knsql.append(selector);
+            knsql.append(&quot; from &quot;);
+            knsql.append(model.name);
+            let filter = &quot; where &quot;;
+            if(params.fieldchar) {
+                knsql.append(filter).append(&quot;fieldchar LIKE ?fieldchar&quot;);
+                knsql.set(&quot;fieldchar&quot;,&quot;%&quot;+params.fieldchar+&quot;%&quot;);
+                filter = &quot; and &quot;;
+            }
+            return knsql;    
+        }
+        return super.buildFilterQuery(context, model, knsql, selector, action, subaction);
+    }
+
+}
+</code></pre>
+<p>sample.handler.service.ts</p>
+<pre><code class="language-typescript">import KnService from &quot;@willsofts/will-db&quot;;
+import { ServiceSchema } from &quot;moleculer&quot;;
+import { SampleHandler } from &quot;./SampleHandler&quot;;
+
+const SampleHandlerService : ServiceSchema = {
+    name: &quot;sample.handler&quot;,
+    mixins: [KnService],
+    handler: new SampleHandler(), 
+}
+export = SampleHandlerService;
+</code></pre>
+<p>After build and run, you can invoke.</p>
+<pre><code>curl -X POST http://localhost:8080/api/sample.handler/list
+curl -X POST http://localhost:8080/api/sample.handler/list?fieldchar=AAA
+</code></pre>
+<ol start="5">
+<li>
+<p>create action handler service, user defined action handler class.</p>
+<p>SampleQueryHandler.ts</p>
+</li>
+</ol>
+<pre><code class="language-typescript">import { KnModel, KnOperation } from &quot;@willsofts/will-db&quot;;
+import { KnSQL, KnRecordSet } from &quot;@willsofts/will-sql&quot;;
+import { KnContextInfo } from '@willsofts/will-core';
+import { TknOperateHandler, OPERATE_HANDLERS } from '@willsofts/will-serv';
+
+export class SampleQueryHandler extends TknOperateHandler {
+    public progid = &quot;sample&quot;;
+    public model : KnModel = { 
+        name: &quot;sample&quot;, 
+        alias: { privateAlias: this.section }, 
+    };
+    public handlers = OPERATE_HANDLERS.concat([{name: &quot;query&quot;}]);
+    
+    public async query(context: KnContextInfo) : Promise&lt;any&gt; {
+        return this.callFunctional(context, {operate: KnOperation.QUERY, raw: false}, this.doQuery);
+    }
+
+    protected async doQuery(context: KnContextInfo, model: KnModel) : Promise&lt;KnRecordSet&gt; {
+        let db = this.getPrivateConnector(model);
+        try {
+            let knsql = new KnSQL();
+            knsql.append(&quot;select * from &quot;);
+            knsql.append(model.name);
+            let filter = &quot; where &quot;;
+            if(context.params.fieldchar) {
+                knsql.append(filter).append(&quot;fieldchar LIKE ?fieldchar&quot;);
+                knsql.set(&quot;fieldchar&quot;,&quot;%&quot;+context.params.fieldchar+&quot;%&quot;);
+                filter = &quot; and &quot;;
+            }
+            let rs = await knsql.executeQuery(db,context);
+            return this.createRecordSet(rs);
+        } catch(ex: any) {
+            this.logger.error(this.constructor.name,ex);
+            return Promise.reject(this.getDBError(ex));
+        } finally {
+            if(db) db.close();
+        }
+    }
+}
+</code></pre>
+<p>sample.action.service.ts</p>
+<pre><code class="language-typescript">import KnService from &quot;@willsofts/will-db&quot;;
+import { ServiceSchema } from &quot;moleculer&quot;;
+import { SampleQueryHandler } from &quot;./SampleQueryHandler&quot;;
+
+const SampleQueryHandlerService : ServiceSchema = {
+    name: &quot;sample.action&quot;,
+    mixins: [KnService],
+    handler: new SampleQueryHandler(), 
+}
+export = SampleQueryHandlerService;
+</code></pre>
+<p>After build and run, you can invoke.</p>
+<pre><code>curl -X POST http://localhost:8080/api/sample.action/list
+curl -X POST http://localhost:8080/api/sample.action/list?fieldchar=AAA
+</code></pre>
+<h3>Create service by template</h3>
+<p>In template you can setting and invoked by configure.</p>
+<ol>
+<li>
+<p>Data table service by <code>datatable</code> that support <code>list</code>, <code>get</code> and <code>category</code> actions to discover. This is dynamic fetching data set from specified table schema. In order to use api with <code>get</code> and <code>category</code> this reserved for table schema with caption field/column <code>nameen</code> and <code>nameth</code>.</p>
+<ul>
+<li>curl -X POST <a href="http://localhost:8080/api/datatable/list">http://localhost:8080/api/datatable/list</a> -d “tablename=sample&amp;orderfield=fieldchar”</li>
+<li>curl -X POST -H “Content-Type: application/json” <a href="http://localhost:8080/api/datatable/list">http://localhost:8080/api/datatable/list</a> -d “{&quot;tablename&quot;: [&quot;sample&quot;], &quot;orderfield&quot;: &quot;fieldchar&quot;}”</li>
+</ul>
+</li>
+<li>
+<p>Predefined data categories service by <code>category</code> that support <code>groups</code> and <code>lists</code> actions to discover. This need <code>config/setting.json</code> configuration settings.</p>
+<ul>
+<li>curl -X POST <a href="http://localhost:8080/api/category/lists">http://localhost:8080/api/category/lists</a> -d “names=sample”</li>
+<li>curl -X POST <a href="http://localhost:8080/api/category/groups">http://localhost:8080/api/category/groups</a> -d “names=sample”</li>
+<li>curl -X POST -H “Content-Type: application/json” <a href="http://localhost:8080/api/category/groups">http://localhost:8080/api/category/groups</a> -d “{&quot;names&quot;:&quot;sample&quot;}”</li>
+</ul>
+<p>config/setting.json</p>
+</li>
+</ol>
+<pre><code class="language-json">        &quot;sample&quot; : {&quot;tableName&quot;: &quot;sample&quot;, &quot;keyField&quot;: &quot;fieldchar&quot;, &quot;addonFields&quot;: &quot;fieldvarchar,fieldflag&quot;, &quot;orderFields&quot;: &quot;fieldchar&quot;, &quot;captionFields&quot;: &quot;fieldtext&quot;, &quot;nameen&quot;: &quot;fieldtext&quot;, &quot;nameth&quot;: &quot;fieldtext&quot;, &quot;setting&quot;: { &quot;keyName&quot;: &quot;fieldchar&quot;, &quot;valueNames&quot;: [&quot;fieldtext&quot;]} },
+</code></pre>
+<ol start="3">
+<li>
+<p>Data service by <code>dataservice</code> that support <code>lookup</code> and <code>lists</code> actions to discover. This is dynamic fetching data set from custom setting via table <code>api_config</code>.</p>
+<ul>
+<li>get data using lookup with api name &amp; parameters
+<ul>
+<li>curl “<a href="http://localhost:8080/api/dataservice/lookup?apiname=api_sample&amp;fieldchar=AAA">http://localhost:8080/api/dataservice/lookup?apiname=api_sample&amp;fieldchar=AAA</a>”</li>
+</ul>
+</li>
+<li>get data using lists for api name with json parameters
+<ul>
+<li>curl -X POST -H “Content-Type: application/json” <a href="http://localhost:8080/api/dataservice/lists">http://localhost:8080/api/dataservice/lists</a> -d “{&quot;apiname&quot;:[&quot;api_sample&quot;],&quot;fieldchar&quot;:&quot;AAA&quot;}”</li>
+</ul>
+</li>
+</ul>
+<p>Setting data service by API Configuration screen.</p>
+<p><img src="service_config.png" alt="API Configuration"></p>
+</li>
+</ol>
+
+</body>
+</html>
